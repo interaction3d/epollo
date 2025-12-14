@@ -1,0 +1,16 @@
+topics:
+  - "advertising"
+  - "sponsored content"
+  - "newsletter signup"
+
+ollama:
+  model: "llama3.2"  # or latest available
+  api_url: "http://localhost:11434"
+
+filtering:
+  enabled: true
+
+display:
+  remove_images: true
+  summary_view: true
+

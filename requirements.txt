@@ -1,0 +1,5 @@
+pywebview>=4.4.0
+requests>=2.31.0
+pyyaml>=6.0.1
+ollama>=0.1.0
+
