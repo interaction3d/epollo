@@ -1,6 +1,6 @@
 # Epollo
 
-[logo](./logo.png)
+![logo](./logo.png)
 
 A lightweight Python browser with LLM-based content filtering. Epollo allows you to browse the web while automatically removing content related to user-configurable topics using a local LLM (via Ollama).
 
