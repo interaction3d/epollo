@@ -16,7 +16,7 @@ class Config:
             "newsletter signup"
         ],
         "ollama": {
-            "model": "llama3.2",
+            "model": "qwen2.5:1.5b",
             "api_url": "http://localhost:11434"
         },
         "filtering": {

@@ -4,7 +4,7 @@ topics:
   - "newsletter signup"
 
 ollama:
-  model: "llama3.2"  # or latest available
+  model: "qwen2.5:1.5b"  # or latest available
   api_url: "http://localhost:11434"
 
 filtering:
