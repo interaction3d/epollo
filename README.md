@@ -36,6 +36,61 @@ pip install -r requirements.txt
    - Start Ollama service
    - Pull a model: `ollama pull llama3.2`
 
+## Running Ollama Locally
+
+### Start the Ollama Server
+
+Before running Epollo, you need to start the Ollama server:
+
+```bash
+# Start Ollama server (keep this terminal open)
+ollama serve
+```
+
+**Note:** On macOS, Ollama may run automatically as a background service after installation. If `ollama serve` says the port is already in use, Ollama is likely already running.
+
+### Download a Model
+
+Download a model for local use (recommended small models for faster performance):
+
+```bash
+# Small, fast models (good for MacBook Pro)
+ollama pull qwen2.5:1.5b     # ~1.6GB - fastest
+ollama pull llama3.2:1b      # ~1.3GB - very fast
+ollama pull phi3:mini        # ~2.3GB - good balance
+
+# List downloaded models
+ollama list
+```
+
+### Test Locally
+
+Test that Ollama is working correctly:
+
+```bash
+# Test Ollama connection - runs a simple test script that sends a chat message to verify Ollama is working
+python epollo/models/run.py
+```
+
+Or test the model directly:
+
+```bash
+# Test a model
+ollama run qwen2.5:1.5b "Hello, how are you?"
+```
+
+### Verify Ollama is Running
+
+Check if Ollama is accessible:
+
+```bash
+# Check Ollama API
+curl http://localhost:11434/api/tags
+
+# Or test with Python
+python3 -c "import ollama; print(ollama.list())"
+```
+
 ## Configuration
 
 Edit `config.yaml` to customize filtering topics and Ollama settings:
