@@ -79,57 +79,72 @@ class Browser:
             box-sizing: border-box;
         }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            font-family: 'Courier New', Courier, monospace;
             display: flex;
             flex-direction: column;
             height: 100vh;
             overflow: hidden;
+            background: #fafafa;
+            color: #333;
         }
         .toolbar {
-            background: #f5f5f5;
-            border-bottom: 1px solid #ddd;
-            padding: 8px;
+            background: #fff;
+            border-bottom: 2px solid #333;
+            padding: 16px;
             display: flex;
-            gap: 8px;
+            gap: 16px;
             align-items: center;
             flex-shrink: 0;
         }
         #url-input {
             flex: 1;
-            padding: 8px 12px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+            padding: 12px 16px;
+            border: 2px solid #333;
+            background: #fff;
+            font-family: 'Courier New', Courier, monospace;
             font-size: 14px;
+            outline: none;
+            transition: all 0.2s ease;
         }
         #url-input:focus {
-            outline: none;
-            border-color: #007AFF;
+            background: #f0f0f0;
+            border-color: #000;
         }
         #filter-toggle {
-            padding: 8px 16px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            background: white;
+            padding: 12px 20px;
+            border: 2px solid #333;
+            background: #fff;
             cursor: pointer;
+            font-family: 'Courier New', Courier, monospace;
             font-size: 14px;
+            font-weight: bold;
             white-space: nowrap;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        #filter-toggle:hover {
+            background: #f0f0f0;
         }
         #filter-toggle.active {
-            background: #007AFF;
-            color: white;
-            border-color: #007AFF;
+            background: #333;
+            color: #fff;
         }
         #status {
-            padding: 8px 12px;
+            padding: 12px 16px;
             font-size: 12px;
             color: #666;
             white-space: nowrap;
+            font-family: 'Courier New', Courier, monospace;
+            font-style: italic;
+            min-width: 200px;
         }
         #content-frame {
             flex: 1;
             border: none;
             width: 100%;
             height: 100%;
+            background: #fff;
         }
         .loading {
             display: flex;
@@ -138,14 +153,27 @@ class Browser:
             height: 100%;
             font-size: 16px;
             color: #666;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        
+        /* Typewriter cursor effect */
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        
+        #url-input:focus::after {
+            content: '_';
+            position: absolute;
+            animation: blink 1s infinite;
         }
     </style>
 </head>
 <body>
     <div class="toolbar">
-        <input type="text" id="url-input" placeholder="Enter URL (e.g., https://example.com)" />
-        <button id="filter-toggle">Filter: Off</button>
-        <div id="status"></div>
+        <input type="text" id="url-input" placeholder="ENTER URL..." />
+        <button id="filter-toggle">FILTER: OFF</button>
+        <div id="status">READY</div>
     </div>
     <iframe id="content-frame" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation"></iframe>
     
@@ -160,7 +188,7 @@ class Browser:
             if (e.key === 'Enter') {
                 const url = urlInput.value.trim();
                 if (url) {
-                    status.textContent = 'Loading...';
+                    status.textContent = 'LOADING...';
                     window.pywebview.api.navigate(url, filterToggle.classList.contains('active'));
                 }
             }
@@ -171,22 +199,22 @@ class Browser:
             const isActive = filterToggle.classList.contains('active');
             if (isActive) {
                 filterToggle.classList.remove('active');
-                filterToggle.textContent = 'Filter: Off';
+                filterToggle.textContent = 'FILTER: OFF';
             } else {
                 filterToggle.classList.add('active');
-                filterToggle.textContent = 'Filter: On';
+                filterToggle.textContent = 'FILTER: ON';
             }
             // Reload current page with new filter setting
             const url = urlInput.value.trim();
             if (url) {
-                status.textContent = 'Reloading with filter ' + (filterToggle.classList.contains('active') ? 'on' : 'off') + '...';
+                status.textContent = 'RELOADING WITH FILTER ' + (filterToggle.classList.contains('active') ? 'ON' : 'OFF') + '...';
                 window.pywebview.api.navigate(url, filterToggle.classList.contains('active'));
             }
         });
         
         // Helper function to update status from Python
         window.updateStatus = function(message) {
-            status.textContent = message;
+            status.textContent = message.toUpperCase();
         };
         
         // Helper function to update URL from Python
@@ -257,10 +285,37 @@ class Browser:
             logger.error(error_msg)
             error_html = f"""
             <html>
-            <body style="font-family: Arial, sans-serif; padding: 20px;">
-                <h2>Timeout Error</h2>
-                <p>Could not load {url}</p>
-                <p style="color: #666;">The request took too long. Please try again or check your connection.</p>
+            <head>
+                <style>
+                    body {{
+                        font-family: 'Courier New', Courier, monospace;
+                        padding: 32px;
+                        background: #fafafa;
+                        color: #333;
+                        line-height: 1.8;
+                    }}
+                    h2 {{
+                        font-size: 24px;
+                        margin-bottom: 20px;
+                        text-transform: uppercase;
+                        letter-spacing: 2px;
+                        border-bottom: 3px solid #333;
+                        padding-bottom: 10px;
+                    }}
+                    p {{
+                        margin-bottom: 16px;
+                        font-size: 14px;
+                    }}
+                    .error-detail {{
+                        color: #666;
+                        font-style: italic;
+                    }}
+                </style>
+            </head>
+            <body>
+                <h2>TIMEOUT ERROR</h2>
+                <p>COULD NOT LOAD {url}</p>
+                <p class="error-detail">THE REQUEST TOOK TOO LONG. PLEASE TRY AGAIN OR CHECK YOUR CONNECTION.</p>
             </body>
             </html>
             """
@@ -270,10 +325,37 @@ class Browser:
             logger.error(error_msg)
             error_html = f"""
             <html>
-            <body style="font-family: Arial, sans-serif; padding: 20px;">
-                <h2>Connection Error</h2>
-                <p>Could not connect to {url}</p>
-                <p style="color: #666;">Please check your internet connection and try again.</p>
+            <head>
+                <style>
+                    body {{
+                        font-family: 'Courier New', Courier, monospace;
+                        padding: 32px;
+                        background: #fafafa;
+                        color: #333;
+                        line-height: 1.8;
+                    }}
+                    h2 {{
+                        font-size: 24px;
+                        margin-bottom: 20px;
+                        text-transform: uppercase;
+                        letter-spacing: 2px;
+                        border-bottom: 3px solid #333;
+                        padding-bottom: 10px;
+                    }}
+                    p {{
+                        margin-bottom: 16px;
+                        font-size: 14px;
+                    }}
+                    .error-detail {{
+                        color: #666;
+                        font-style: italic;
+                    }}
+                </style>
+            </head>
+            <body>
+                <h2>CONNECTION ERROR</h2>
+                <p>COULD NOT CONNECT TO {url}</p>
+                <p class="error-detail">PLEASE CHECK YOUR INTERNET CONNECTION AND TRY AGAIN.</p>
             </body>
             </html>
             """
@@ -283,10 +365,37 @@ class Browser:
             logger.error(error_msg)
             error_html = f"""
             <html>
-            <body style="font-family: Arial, sans-serif; padding: 20px;">
-                <h2>HTTP Error {e.response.status_code}</h2>
-                <p>Could not load {url}</p>
-                <p style="color: #666;">{str(e)}</p>
+            <head>
+                <style>
+                    body {{
+                        font-family: 'Courier New', Courier, monospace;
+                        padding: 32px;
+                        background: #fafafa;
+                        color: #333;
+                        line-height: 1.8;
+                    }}
+                    h2 {{
+                        font-size: 24px;
+                        margin-bottom: 20px;
+                        text-transform: uppercase;
+                        letter-spacing: 2px;
+                        border-bottom: 3px solid #333;
+                        padding-bottom: 10px;
+                    }}
+                    p {{
+                        margin-bottom: 16px;
+                        font-size: 14px;
+                    }}
+                    .error-detail {{
+                        color: #666;
+                        font-style: italic;
+                    }}
+                </style>
+            </head>
+            <body>
+                <h2>HTTP ERROR {e.response.status_code}</h2>
+                <p>COULD NOT LOAD {url}</p>
+                <p class="error-detail">{str(e).upper()}</p>
             </body>
             </html>
             """
@@ -296,9 +405,36 @@ class Browser:
             logger.error(error_msg)
             error_html = f"""
             <html>
-            <body style="font-family: Arial, sans-serif; padding: 20px;">
-                <h2>Invalid URL</h2>
-                <p style="color: #666;">{error_msg}</p>
+            <head>
+                <style>
+                    body {{
+                        font-family: 'Courier New', Courier, monospace;
+                        padding: 32px;
+                        background: #fafafa;
+                        color: #333;
+                        line-height: 1.8;
+                    }}
+                    h2 {{
+                        font-size: 24px;
+                        margin-bottom: 20px;
+                        text-transform: uppercase;
+                        letter-spacing: 2px;
+                        border-bottom: 3px solid #333;
+                        padding-bottom: 10px;
+                    }}
+                    p {{
+                        margin-bottom: 16px;
+                        font-size: 14px;
+                    }}
+                    .error-detail {{
+                        color: #666;
+                        font-style: italic;
+                    }}
+                </style>
+            </head>
+            <body>
+                <h2>INVALID URL</h2>
+                <p class="error-detail">{error_msg.upper()}</p>
             </body>
             </html>
             """
@@ -308,10 +444,37 @@ class Browser:
             logger.error(error_msg)
             error_html = f"""
             <html>
-            <body style="font-family: Arial, sans-serif; padding: 20px;">
-                <h2>Error loading page</h2>
-                <p>Could not load {url}</p>
-                <p style="color: #666;">{str(e)}</p>
+            <head>
+                <style>
+                    body {{
+                        font-family: 'Courier New', Courier, monospace;
+                        padding: 32px;
+                        background: #fafafa;
+                        color: #333;
+                        line-height: 1.8;
+                    }}
+                    h2 {{
+                        font-size: 24px;
+                        margin-bottom: 20px;
+                        text-transform: uppercase;
+                        letter-spacing: 2px;
+                        border-bottom: 3px solid #333;
+                        padding-bottom: 10px;
+                    }}
+                    p {{
+                        margin-bottom: 16px;
+                        font-size: 14px;
+                    }}
+                    .error-detail {{
+                        color: #666;
+                        font-style: italic;
+                    }}
+                </style>
+            </head>
+            <body>
+                <h2>ERROR LOADING PAGE</h2>
+                <p>COULD NOT LOAD {url}</p>
+                <p class="error-detail">{str(e).upper()}</p>
             </body>
             </html>
             """
@@ -321,10 +484,37 @@ class Browser:
             logger.error(error_msg, exc_info=True)
             error_html = f"""
             <html>
-            <body style="font-family: Arial, sans-serif; padding: 20px;">
-                <h2>Unexpected Error</h2>
-                <p>An unexpected error occurred while loading {url}</p>
-                <p style="color: #666;">{str(e)}</p>
+            <head>
+                <style>
+                    body {{
+                        font-family: 'Courier New', Courier, monospace;
+                        padding: 32px;
+                        background: #fafafa;
+                        color: #333;
+                        line-height: 1.8;
+                    }}
+                    h2 {{
+                        font-size: 24px;
+                        margin-bottom: 20px;
+                        text-transform: uppercase;
+                        letter-spacing: 2px;
+                        border-bottom: 3px solid #333;
+                        padding-bottom: 10px;
+                    }}
+                    p {{
+                        margin-bottom: 16px;
+                        font-size: 14px;
+                    }}
+                    .error-detail {{
+                        color: #666;
+                        font-style: italic;
+                    }}
+                </style>
+            </head>
+            <body>
+                <h2>UNEXPECTED ERROR</h2>
+                <p>AN UNEXPECTED ERROR OCCURRED WHILE LOADING {url}</p>
+                <p class="error-detail">{str(e).upper()}</p>
             </body>
             </html>
             """
@@ -501,7 +691,7 @@ Provide only the bullet points, one per line, starting with "- ". Do not include
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Summary View</title>
+    <title>SUMMARY VIEW</title>
     <style>
         * {{
             margin: 0;
@@ -509,75 +699,91 @@ Provide only the bullet points, one per line, starting with "- ". Do not include
             box-sizing: border-box;
         }}
         body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-            line-height: 1.6;
+            font-family: 'Courier New', Courier, monospace;
+            line-height: 1.8;
             color: #333;
-            background: #fff;
-            padding: 20px;
-            max-width: 900px;
+            background: #fafafa;
+            padding: 32px;
+            max-width: 1000px;
             margin: 0 auto;
         }}
         h1 {{
-            font-size: 24px;
-            margin-bottom: 30px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #eee;
+            font-size: 28px;
+            margin-bottom: 40px;
+            padding-bottom: 16px;
+            border-bottom: 3px solid #333;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }}
         .section {{
-            margin-bottom: 40px;
-            padding: 20px;
-            background: #f9f9f9;
-            border-radius: 8px;
-            border-left: 4px solid #007AFF;
+            margin-bottom: 48px;
+            padding: 24px;
+            background: #fff;
+            border: 2px solid #333;
         }}
         .section-title {{
             font-size: 20px;
-            font-weight: 600;
-            margin-bottom: 15px;
+            font-weight: bold;
+            margin-bottom: 20px;
             color: #000;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }}
         .summary {{
-            margin-bottom: 15px;
-            padding-left: 20px;
+            margin-bottom: 20px;
+            padding-left: 0;
         }}
         .summary ul {{
             list-style: none;
             padding: 0;
         }}
         .summary li {{
-            margin-bottom: 8px;
-            padding-left: 20px;
+            margin-bottom: 12px;
+            padding-left: 24px;
             position: relative;
+            font-size: 14px;
         }}
         .summary li:before {{
-            content: "•";
+            content: ">";
             position: absolute;
             left: 0;
-            color: #007AFF;
+            color: #333;
             font-weight: bold;
         }}
         .original-content {{
             background: #fff;
-            padding: 15px;
-            border-radius: 4px;
-            border: 1px solid #e0e0e0;
+            padding: 20px;
+            border: 2px solid #333;
             font-size: 14px;
-            line-height: 1.7;
+            line-height: 1.8;
             white-space: pre-wrap;
+            margin-top: 16px;
         }}
         .url-info {{
             font-size: 12px;
             color: #666;
-            margin-bottom: 20px;
-            padding: 10px;
-            background: #f0f0f0;
-            border-radius: 4px;
+            margin-bottom: 32px;
+            padding: 16px;
+            background: #fff;
+            border: 2px solid #333;
+            font-style: italic;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }}
+        .url-info a {{
+            color: #333;
+            text-decoration: none;
+            font-weight: bold;
+        }}
+        .url-info a:hover {{
+            text-decoration: underline;
         }}
     </style>
 </head>
 <body>
-    <div class="url-info">Source: <a href="{url}" target="_blank">{escaped_url_display}</a></div>
-    <h1>Content Summary</h1>
+    <div class="url-info">SOURCE: <a href="{url}" target="_blank">{escaped_url_display}</a></div>
+    <h1>CONTENT SUMMARY</h1>
 """]
         
         for section in sections:
@@ -628,12 +834,47 @@ Provide only the bullet points, one per line, starting with "- ". Do not include
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>No Content Found</title>
+    <title>NO CONTENT FOUND</title>
+    <style>
+        body {{
+            font-family: 'Courier New', Courier, monospace;
+            padding: 32px;
+            background: #fafafa;
+            color: #333;
+            line-height: 1.8;
+        }}
+        h1 {{
+            font-size: 28px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 3px solid #333;
+            padding-bottom: 10px;
+        }}
+        p {{
+            margin-bottom: 16px;
+            font-size: 14px;
+        }}
+        a {{
+            color: #333;
+            text-decoration: none;
+            font-weight: bold;
+            border: 2px solid #333;
+            padding: 8px 16px;
+            display: inline-block;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }}
+        a:hover {{
+            background: #333;
+            color: #fff;
+        }}
+    </style>
 </head>
 <body>
-    <h1>No Content Found</h1>
-    <p>Could not extract meaningful content from this page.</p>
-    <p><a href="{url}">View original page</a></p>
+    <h1>NO CONTENT FOUND</h1>
+    <p>COULD NOT EXTRACT MEANINGFUL CONTENT FROM THIS PAGE.</p>
+    <p><a href="{url}">VIEW ORIGINAL PAGE</a></p>
 </body>
 </html>"""
         
