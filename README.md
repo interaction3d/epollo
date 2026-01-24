@@ -9,6 +9,7 @@ A lightweight Python browser with LLM-based content filtering. Epollo allows you
 - **Minimalistic UI**: Clean, simple interface with URL bar and filter toggle
 - **Web Rendering**: Full JavaScript support using system browser engine (via pywebview)
 - **Content Filtering**: Remove content related to configurable topics using local LLM
+- **Screenshot Functionality**: Capture screenshots of web pages and HTML content
 - **Real-time URL Changes**: Navigate to any URL at any time
 - **Lightweight**: Minimal dependencies, fast startup
 
@@ -17,6 +18,7 @@ A lightweight Python browser with LLM-based content filtering. Epollo allows you
 - Python 3.9 or higher
 - [Ollama](https://ollama.ai/) installed and running (for content filtering)
 - An Ollama model (e.g., `llama3.2`) downloaded
+- Playwright browsers (for screenshot functionality)
 
 ## Installation
 
@@ -31,7 +33,12 @@ cd epollo
 pip install -r requirements.txt
 ```
 
-3. Install and start Ollama:
+3. Install Playwright browsers (for screenshot functionality):
+```bash
+python -m playwright install chromium
+```
+
+4. Install and start Ollama:
    - Download from https://ollama.ai/
    - Start Ollama service
    - Pull a model: `ollama pull llama3.2`
@@ -125,12 +132,72 @@ python epollo/main.py
 
 1. **Enter a URL**: Type a URL in the address bar and press Enter
 2. **Toggle Filtering**: Click the "Filter" button to enable/disable content filtering
-3. **Navigate**: Change the URL at any time to browse different websites
+3. **Take Screenshots**: Click the "Screenshot" button to capture the current page
+4. **Navigate**: Change the URL at any time to browse different websites
 
 When filtering is enabled, the browser will:
 - Fetch the webpage HTML
 - Send it to Ollama with instructions to remove content related to configured topics
 - Display the filtered content while maintaining document flow
+
+#### Screenshot Functionality
+
+The browser includes built-in screenshot capabilities:
+
+- **Click Screenshot Button**: Capture current page with one click
+- **Automatic Saving**: Screenshots are saved to the `screenshots/` directory with timestamp
+- **High Quality**: Full-page capture with customizable dimensions
+- **Multiple Formats**: Support for PNG, JPEG, and WebP formats
+
+**Programmatic Screenshot Usage:**
+
+```python
+from epollo.browser import Browser
+
+# Create browser instance
+browser = Browser()
+
+# Screenshot from URL
+screenshot_bytes = browser.take_url_screenshot(
+    url="https://example.com",
+    output_path="screenshot.png",
+    width=1200,
+    height=800,
+    full_page=True
+)
+
+# Screenshot after navigation
+browser.navigate("https://example.com")
+screenshot_bytes = browser.take_screenshot(
+    output_path="nav_screenshot.png",
+    width=1200,
+    height=800
+)
+```
+
+**Standalone Screenshot Functions:**
+
+```python
+from epollo.screenshot import render_html_to_screenshot_sync, render_url_to_screenshot_sync
+
+# HTML to screenshot
+html_content = "<html><body><h1>Hello World</h1></body></html>"
+screenshot_bytes = render_html_to_screenshot_sync(
+    html=html_content,
+    output_path="html_screenshot.png",
+    width=1200,
+    height=800
+)
+
+# URL to screenshot
+screenshot_bytes = render_url_to_screenshot_sync(
+    url="https://example.com",
+    output_path="url_screenshot.png",
+    width=1200,
+    height=800,
+    full_page=True
+)
+```
 
 ## How It Works
 
@@ -157,8 +224,9 @@ epollo/
 ├── epollo/
 │   ├── __init__.py
 │   ├── main.py              # Entry point
-│   ├── browser.py           # Main browser window
+│   ├── browser.py           # Main browser window with screenshot support
 │   ├── content_filter.py    # Ollama integration
+│   ├── screenshot.py        # Screenshot functionality using Playwright
 │   └── config.py            # Configuration management
 ├── requirements.txt
 ├── config.yaml              # User configuration
@@ -171,6 +239,9 @@ epollo/
 - Large pages (>10MB) are not supported
 - Filtering may take some time depending on page size and Ollama model speed
 - The browser uses an iframe to render content, which may have some limitations with certain websites
+- Screenshot functionality requires Playwright browsers to be installed (`python -m playwright install chromium`)
+- Screenshots are automatically saved to the `screenshots/` directory with timestamp filenames
+- For batch screenshot operations, consider using the async API for better performance
 
 ## License
 

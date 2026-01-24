@@ -12,6 +12,7 @@ from html import unescape
 import ollama
 from .config import Config
 from .content_filter import ContentFilter
+from .screenshot import render_html_to_screenshot_sync, render_url_to_screenshot_sync
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,26 @@ class BrowserAPI:
             use_filter: Whether to apply content filtering
         """
         self._browser.navigate(url, use_filter)
+    
+    def take_screenshot(self, filename: str = "screenshot.png", width: int = 1200, height: int = 800):
+        """Take a screenshot of the current page - called from JavaScript.
+        
+        Args:
+            filename: Screenshot filename
+            width: Image width
+            height: Image height
+        """
+        try:
+            # Create screenshots directory if it doesn't exist
+            import os
+            screenshots_dir = os.path.join(os.getcwd(), "screenshots")
+            os.makedirs(screenshots_dir, exist_ok=True)
+            
+            output_path = os.path.join(screenshots_dir, filename)
+            self._browser.take_screenshot(output_path=output_path, width=width, height=height)
+            return f"Screenshot saved to {output_path}"
+        except Exception as e:
+            return f"Error taking screenshot: {str(e)}"
 
 
 class Browser:
@@ -130,6 +151,22 @@ class Browser:
             background: #333;
             color: #fff;
         }
+        #screenshot-btn {
+            padding: 12px 20px;
+            border: 2px solid #333;
+            background: #fff;
+            cursor: pointer;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            font-weight: bold;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        #screenshot-btn:hover {
+            background: #f0f0f0;
+        }
         #status {
             padding: 12px 16px;
             font-size: 12px;
@@ -173,6 +210,7 @@ class Browser:
     <div class="toolbar">
         <input type="text" id="url-input" placeholder="ENTER URL..." />
         <button id="filter-toggle">FILTER: OFF</button>
+        <button id="screenshot-btn">SCREENSHOT</button>
         <div id="status">READY</div>
     </div>
     <iframe id="content-frame" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation"></iframe>
@@ -180,6 +218,7 @@ class Browser:
     <script>
         const urlInput = document.getElementById('url-input');
         const filterToggle = document.getElementById('filter-toggle');
+        const screenshotBtn = document.getElementById('screenshot-btn');
         const contentFrame = document.getElementById('content-frame');
         const status = document.getElementById('status');
         
@@ -221,6 +260,25 @@ class Browser:
         window.updateUrl = function(url) {
             urlInput.value = url;
         };
+        
+        // Screenshot button handling
+        screenshotBtn.addEventListener('click', function() {
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            const filename = `screenshot-${timestamp}.png`;
+            status.textContent = 'TAKING SCREENSHOT...';
+            
+            window.pywebview.api.take_screenshot(filename).then(function(result) {
+                status.textContent = 'SCREENSHOT TAKEN';
+                setTimeout(() => {
+                    status.textContent = 'READY';
+                }, 2000);
+            }).catch(function(error) {
+                status.textContent = 'SCREENSHOT FAILED';
+                setTimeout(() => {
+                    status.textContent = 'READY';
+                }, 2000);
+            });
+        });
     </script>
 </body>
 </html>
@@ -1113,6 +1171,101 @@ Provide only the bullet points, one per line, starting with "- ". Do not include
             use_filter: Whether to apply content filtering
         """
         self._load_url(url, use_filter)
+    
+    def take_screenshot(
+        self,
+        output_path: Optional[str] = None,
+        width: int = 1200,
+        height: int = 800,
+        full_page: bool = True,
+        quality: int = 90,
+        format: str = 'png'
+    ) -> bytes:
+        """Take a screenshot of the current page or HTML content.
+        
+        Args:
+            output_path: Optional path to save screenshot
+            width: Image width
+            height: Image height
+            full_page: Whether to capture full page
+            quality: Image quality (1-100) for JPEG
+            format: Image format ('png', 'jpeg', 'webp')
+            
+        Returns:
+            Screenshot as bytes
+        """
+        if not self._html_content:
+            raise ValueError("No HTML content loaded. Navigate to a URL first.")
+        
+        try:
+            return render_html_to_screenshot_sync(
+                html=self._html_content,
+                output_path=output_path,
+                width=width,
+                height=height,
+                full_page=full_page,
+                quality=quality,
+                format=format
+            )
+        except Exception as e:
+            logger.error(f"Error taking screenshot: {e}")
+            raise
+    
+    def take_url_screenshot(
+        self,
+        url: str,
+        output_path: Optional[str] = None,
+        width: int = 1200,
+        height: int = 800,
+        full_page: bool = True,
+        quality: int = 90,
+        format: str = 'png',
+        use_filter: bool = False
+    ) -> bytes:
+        """Take a screenshot of a URL directly.
+        
+        Args:
+            url: URL to screenshot
+            output_path: Optional path to save screenshot
+            width: Image width
+            height: Image height
+            full_page: Whether to capture full page
+            quality: Image quality (1-100) for JPEG
+            format: Image format ('png', 'jpeg', 'webp')
+            use_filter: Whether to apply content filtering
+            
+        Returns:
+            Screenshot as bytes
+        """
+        try:
+            # If filtering is enabled, fetch and filter the HTML first
+            if use_filter and self.config.topics:
+                html, _ = self._fetch_url(url)
+                html = self.content_filter.filter_content(html, self.config.topics)
+                
+                return render_html_to_screenshot_sync(
+                    html=html,
+                    output_path=output_path,
+                    width=width,
+                    height=height,
+                    full_page=full_page,
+                    quality=quality,
+                    format=format
+                )
+            else:
+                # Render URL directly
+                return render_url_to_screenshot_sync(
+                    url=url,
+                    output_path=output_path,
+                    width=width,
+                    height=height,
+                    full_page=full_page,
+                    quality=quality,
+                    format=format
+                )
+        except Exception as e:
+            logger.error(f"Error taking URL screenshot: {e}")
+            raise
     
     def create_window(self):
         """Create and show browser window."""
