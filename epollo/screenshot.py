@@ -43,7 +43,17 @@ class ScreenshotRenderer:
             self.browser = await self.playwright.chromium.launch(headless=self.headless)
             self.context = await self.browser.new_context(
                 viewport={'width': self.viewport['width'], 'height': self.viewport['height']},
-                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                locale='en-US',
+                timezone_id='America/New_York',
+                extra_http_headers={
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Accept-Encoding': 'gzip, deflate, br',
+                    'DNT': '1',
+                    'Connection': 'keep-alive',
+                    'Upgrade-Insecure-Requests': '1'
+                }
             )
             logger.info("Screenshot renderer started successfully")
         except Exception as e:
@@ -172,11 +182,86 @@ class ScreenshotRenderer:
                 viewport_height = height or self.viewport['height']
                 await page.set_viewport_size({'width': viewport_width, 'height': viewport_height})
             
-            # Navigate to URL
-            await page.goto(url, wait_until="networkidle", timeout=timeout)
+            # Navigate to URL - try different wait conditions for problematic sites
+            try:
+                await page.goto(url, wait_until="networkidle", timeout=timeout)
+            except Exception as e:
+                # If networkidle fails, try with domcontentloaded
+                logger.warning(f"networkidle failed, trying domcontentloaded: {e}")
+                try:
+                    await page.goto(url, wait_until="domcontentloaded", timeout=timeout)
+                except Exception as e2:
+                    # If that also fails, try with minimal waiting
+                    logger.warning(f"domcontentloaded failed, trying with minimal wait: {e2}")
+                    try:
+                        await page.goto(url, wait_until="load", timeout=timeout)
+                    except Exception as e3:
+                        # Final attempt - navigate without waiting
+                        logger.warning(f"load failed, trying without wait: {e3}")
+                        await page.goto(url, timeout=timeout)
             
-            # Wait a bit for any dynamic content to load
-            await page.wait_for_timeout(1000)
+            # Handle paywalls and subscription popups
+            try:
+                # Wait a bit for content to load
+                await page.wait_for_timeout(2000)
+                
+                # Try to remove common paywall/subscription overlays
+                await page.evaluate("""
+                    () => {
+                        // Remove common paywall elements
+                        const selectors = [
+                            '[class*="paywall"]',
+                            '[class*="subscription"]',
+                            '[class*="modal"]',
+                            '[class*="overlay"]',
+                            '[class*="popup"]',
+                            '[id*="paywall"]',
+                            '[id*="subscription"]',
+                            '[id*="modal"]',
+                            '[id*="overlay"]',
+                            '.paywall',
+                            '.subscription',
+                            '.modal',
+                            '.overlay',
+                            '.popup'
+                        ];
+                        
+                        selectors.forEach(selector => {
+                            try {
+                                const elements = document.querySelectorAll(selector);
+                                elements.forEach(el => {
+                                    if (el.style.display !== 'none' && 
+                                        el.style.visibility !== 'hidden') {
+                                        el.style.display = 'none';
+                                        el.style.visibility = 'hidden';
+                                        el.style.opacity = '0';
+                                    }
+                                });
+                            } catch (e) {
+                                // Ignore selector errors
+                            }
+                        });
+                        
+                        // Remove any modal backdrops
+                        const backdrops = document.querySelectorAll('[class*="backdrop"], [class*="modal-backdrop"]');
+                        backdrops.forEach(el => el.remove());
+                        
+                        // Restore body scroll if it's blocked
+                        if (document.body.style.overflow === 'hidden') {
+                            document.body.style.overflow = 'auto';
+                        }
+                        
+                        return true;
+                    }
+                """)
+                
+                # Wait a bit for any dynamic removals
+                await page.wait_for_timeout(1000)
+                
+            except Exception as e:
+                logger.warning(f"Could not handle paywall elements: {e}")
+                # Continue without paywall handling
+                pass
             
             # Take screenshot
             screenshot_options = {

@@ -68,22 +68,25 @@ class Browser:
             config: Configuration instance (creates default if None)
         """
         self.config = config or Config()
-        self.content_filter = ContentFilter(
-            model=self.config.ollama_model,
-            api_url=self.config.ollama_api_url
-        )
         self.filtering_enabled = self.config.filtering_enabled
         self.window = None
         self.current_url = ""
         self._html_content = None
         
-        # Check Ollama availability if filtering is enabled
+        # Initialize content filter only if filtering is enabled and topics are configured
         if self.filtering_enabled and self.config.topics:
+            self.content_filter = ContentFilter(
+                model=self.config.ollama_model,
+                api_url=self.config.ollama_api_url
+            )
+            # Check Ollama availability
             if not self.content_filter.check_ollama_available():
                 logger.warning(
                     f"Ollama is not available at {self.config.ollama_api_url}. "
                     "Content filtering will not work. Make sure Ollama is running."
                 )
+        else:
+            self.content_filter = None
     
     def _create_html_ui(self) -> str:
         """Create HTML UI with URL bar and filter toggle."""
@@ -937,7 +940,8 @@ Provide only the bullet points, one per line, starting with "- ". Do not include
 </html>"""
         
         # Generate summaries for each section
-        self.window.evaluate_js("window.updateStatus('Generating summaries...')")
+        if self.window:
+            self.window.evaluate_js("window.updateStatus('Generating summaries...')")
         
         for i, section in enumerate(sections):
             try:
@@ -945,7 +949,8 @@ Provide only the bullet points, one per line, starting with "- ". Do not include
                 section['summary'] = summary
                 # Update progress
                 progress = int((i + 1) / len(sections) * 100)
-                self.window.evaluate_js(f"window.updateStatus('Generating summaries... {progress}%')")
+                if self.window:
+                    self.window.evaluate_js(f"window.updateStatus('Generating summaries... {progress}%')")
             except Exception as e:
                 logger.error(f"Error generating summary for section {i}: {e}")
                 section['summary'] = ""
@@ -1101,7 +1106,8 @@ Provide only the bullet points, one per line, starting with "- ". Do not include
                 def js_escape(text):
                     return text.replace('\\', '\\\\').replace("'", "\\'").replace('\n', '\\n').replace('\r', '')
                 
-                self.window.evaluate_js(f"window.updateStatus('Loading {url}...')")
+                if self.window:
+                    self.window.evaluate_js(f"window.updateStatus('Loading {url}...')")
                 
                 html, final_url = self._fetch_url(url)
                 self.current_url = final_url
@@ -1109,14 +1115,17 @@ Provide only the bullet points, one per line, starting with "- ". Do not include
                 # Check if summary view is enabled
                 if self.config.summary_view:
                     # Create summary view instead of showing original page
-                    self.window.evaluate_js("window.updateStatus('Creating summary view...')")
+                    if self.window:
+                        self.window.evaluate_js("window.updateStatus('Creating summary view...')")
                     try:
                         html = self._create_summary_view(html, final_url)
-                        self.window.evaluate_js("window.updateStatus('Summary view ready')")
+                        if self.window:
+                            self.window.evaluate_js("window.updateStatus('Summary view ready')")
                     except Exception as e:
                         logger.error(f"Error creating summary view: {e}", exc_info=True)
                         error_msg = str(e).replace('\\', '\\\\').replace("'", "\\'")
-                        self.window.evaluate_js(f"window.updateStatus('Summary failed: {error_msg}')")
+                        if self.window:
+                            self.window.evaluate_js(f"window.updateStatus('Summary failed: {error_msg}')")
                         # Fall back to original page processing
                         if self.config.remove_images:
                             html = self._remove_media(html)
@@ -1126,40 +1135,46 @@ Provide only the bullet points, one per line, starting with "- ". Do not include
                     if self.config.remove_images:
                         html = self._remove_media(html)
                     
-                    if use_filter and self.config.topics:
-                        self.window.evaluate_js("window.updateStatus('Filtering content...')")
+                    if use_filter and self.config.topics and self.content_filter:
+                        if self.window:
+                            self.window.evaluate_js("window.updateStatus('Filtering content...')")
                         try:
                             html = self.content_filter.filter_content(html, self.config.topics)
-                            self.window.evaluate_js("window.updateStatus('Content filtered')")
+                            if self.window:
+                                self.window.evaluate_js("window.updateStatus('Content filtered')")
                         except RuntimeError as e:
                             # Filtering failed, but continue with original content
                             error_msg = str(e).replace('\\', '\\\\').replace("'", "\\'")
-                            self.window.evaluate_js(f"window.updateStatus('Filtering failed: {error_msg}')")
+                            if self.window:
+                                self.window.evaluate_js(f"window.updateStatus('Filtering failed: {error_msg}')")
                             # Continue with unfiltered HTML
                     else:
-                        self.window.evaluate_js("window.updateStatus('Loaded')")
+                        if self.window:
+                            self.window.evaluate_js("window.updateStatus('Loaded')")
                 
                 # Store HTML and update frame
                 self._html_content = html
                 
-                # Update URL bar
-                escaped_url = js_escape(final_url)
-                self.window.evaluate_js(f"window.updateUrl('{escaped_url}')")
-                
-                # Load content into iframe using base64 data URI (safer for special characters)
-                import base64
-                encoded_html = base64.b64encode(html.encode('utf-8')).decode('utf-8')
-                data_uri = f"data:text/html;charset=utf-8;base64,{encoded_html}"
-                self.window.evaluate_js(f"""
-                    const frame = document.getElementById('content-frame');
-                    frame.src = '{data_uri}';
-                """)
+                # Update URL bar and load content only if window exists
+                if self.window:
+                    escaped_url = js_escape(final_url)
+                    self.window.evaluate_js(f"window.updateUrl('{escaped_url}')")
+                    
+                    # Load content into iframe using base64 data URI (safer for special characters)
+                    import base64
+                    encoded_html = base64.b64encode(html.encode('utf-8')).decode('utf-8')
+                    data_uri = f"data:text/html;charset=utf-8;base64,{encoded_html}"
+                    self.window.evaluate_js(f"""
+                        const frame = document.getElementById('content-frame');
+                        frame.src = '{data_uri}';
+                    """)
                 
             except Exception as e:
                 logger.error(f"Error loading URL: {e}", exc_info=True)
                 # Show error in status, but the error HTML was already returned by _fetch_url
                 error_msg = str(e).replace('\\', '\\\\').replace("'", "\\'")[:100]  # Limit length
-                self.window.evaluate_js(f"window.updateStatus('Error: {error_msg}')")
+                if self.window:
+                    self.window.evaluate_js(f"window.updateStatus('Error: {error_msg}')")
         
         threading.Thread(target=load_thread, daemon=True).start()
     
@@ -1239,7 +1254,7 @@ Provide only the bullet points, one per line, starting with "- ". Do not include
         """
         try:
             # If filtering is enabled, fetch and filter the HTML first
-            if use_filter and self.config.topics:
+            if use_filter and self.config.topics and self.content_filter:
                 html, _ = self._fetch_url(url)
                 html = self.content_filter.filter_content(html, self.config.topics)
                 
@@ -1284,4 +1299,121 @@ Provide only the bullet points, one per line, starting with "- ". Do not include
         )
         
         webview.start(debug=False)
+
+
+def take_url_screenshot(
+    url: str,
+    output_path: Optional[str] = None,
+    width: int = 1200,
+    height: int = 800,
+    full_page: bool = True,
+    quality: int = 90,
+    format: str = 'png',
+    use_filter: bool = False,
+    config: Optional[Config] = None,
+    fallback: bool = True
+) -> bytes:
+    """Take a screenshot of a URL without requiring a Browser instance.
+    
+    This is a convenience function that creates minimal browser state
+    for taking screenshots without initializing the full browser UI.
+    
+    Args:
+        url: URL to screenshot
+        output_path: Optional path to save screenshot
+        width: Image width
+        height: Image height
+        full_page: Whether to capture full page
+        quality: Image quality (1-100) for JPEG
+        format: Image format ('png', 'jpeg', 'webp')
+        use_filter: Whether to apply content filtering
+        config: Optional configuration instance
+        fallback: Whether to try fallback methods for paywalled sites
+        
+    Returns:
+        Screenshot as bytes
+    """
+    try:
+        # If filtering is enabled, create Browser instance with content filter
+        if use_filter and (config and config.topics):
+            browser = Browser(config)
+            return browser.take_url_screenshot(
+                url=url,
+                output_path=output_path,
+                width=width,
+                height=height,
+                full_page=full_page,
+                quality=quality,
+                format=format,
+                use_filter=use_filter
+            )
+        else:
+            # Try direct rendering first
+            try:
+                return render_url_to_screenshot_sync(
+                    url=url,
+                    output_path=output_path,
+                    width=width,
+                    height=height,
+                    full_page=full_page,
+                    quality=quality,
+                    format=format
+                )
+            except Exception as direct_error:
+                logger.warning(f"Direct rendering failed, trying fetch-and-render approach: {direct_error}")
+                
+                # Fallback: fetch HTML and render it (bypasses some paywalls)
+                import requests
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Accept-Encoding': 'gzip, deflate, br',
+                    'DNT': '1',
+                    'Connection': 'keep-alive',
+                    'Upgrade-Insecure-Requests': '1'
+                }
+                
+                response = requests.get(url, headers=headers, timeout=30, allow_redirects=True)
+                response.raise_for_status()
+                
+                # Check if we got an access denied page
+                if 'access denied' in response.text.lower() or '403' in response.text:
+                    if fallback:
+                        logger.warning("Got access denied page, trying cached version")
+                        # Try cached version
+                        try:
+                            cache_url = f"https://webcache.googleusercontent.com/search?q={url}"
+                            cache_response = requests.get(cache_url, headers=headers, timeout=30, allow_redirects=True)
+                            if cache_response.status_code == 200:
+                                return render_html_to_screenshot_sync(
+                                    html=cache_response.text,
+                                    output_path=output_path,
+                                    width=width,
+                                    height=height,
+                                    full_page=full_page,
+                                    quality=quality,
+                                    format=format
+                                )
+                        except Exception as cache_error:
+                            logger.warning(f"Cache fallback failed: {cache_error}")
+                    
+                    # Try with different user agent or add referer
+                    headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                    headers['Referer'] = 'https://www.google.com/'
+                    response = requests.get(url, headers=headers, timeout=30, allow_redirects=True)
+                
+                return render_html_to_screenshot_sync(
+                    html=response.text,
+                    output_path=output_path,
+                    width=width,
+                    height=height,
+                    full_page=full_page,
+                    quality=quality,
+                    format=format
+                )
+    
+    except Exception as e:
+        logger.error(f"Error taking URL screenshot: {e}")
+        raise
 
