@@ -91,6 +91,26 @@ class Config:
         """Check if summary view should be used instead of full page."""
         return self._config.get("display", {}).get("summary_view", False)
     
+    @property
+    def ocr_enabled(self) -> bool:
+        """Check if OCR is enabled."""
+        return self._config.get("ocr", {}).get("enabled", False)
+    
+    @property
+    def ocr_api_url(self) -> str:
+        """Get OCR API URL."""
+        return self._config.get("ocr", {}).get("api_url", "http://localhost:11434")
+    
+    @property
+    def ocr_model(self) -> str:
+        """Get OCR model name."""
+        return self._config.get("ocr", {}).get("model", "deepseek-ocr")
+    
+    @property
+    def ocr_timeout(self) -> int:
+        """Get OCR timeout in seconds."""
+        return self._config.get("ocr", {}).get("timeout", 60)
+    
     def reload(self):
         """Reload configuration from file."""
         self._config = self._load_config()
