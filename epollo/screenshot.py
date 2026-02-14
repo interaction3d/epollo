@@ -2,11 +2,12 @@
 
 import os
 import asyncio
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from pathlib import Path
 import logging
 from playwright.async_api import async_playwright, Browser, BrowserContext, Page
 import base64
+from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -377,3 +378,59 @@ def render_url_to_screenshot_sync(
             )
     
     return asyncio.run(_render())
+
+
+def crop_to_square_tiles(image_path: str, output_dir: Optional[str] = None, overlap: float = 0.5) -> List[str]:
+    """Crop a vertically rectangular image into overlapping square tiles that cover the entire image.
+    
+    Args:
+        image_path: Path to the input image (height > width)
+        output_dir: Directory to save tile images. Defaults to same directory as input.
+        overlap: Overlap ratio between tiles (0.0 to 1.0). 0.5 means 50% overlap.
+        
+    Returns:
+        List of saved tile file paths (tile_1.png, tile_2.png, etc.)
+    """
+    img = Image.open(image_path)
+    width, height = img.size
+    
+    if height <= width:
+        raise ValueError("Image must be vertically rectangular (height > width)")
+    
+    tile_size = width
+    stride = int(tile_size * (1 - overlap))
+    num_tiles = (height - tile_size) // stride + 1 if stride > 0 else height // tile_size
+    
+    if output_dir is None:
+        output_dir = str(Path(image_path).parent)
+    elif not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    
+    base_name = Path(image_path).stem
+    tile_paths = []
+    
+    for i in range(num_tiles):
+        top = i * stride
+        bottom = min(top + tile_size, height)
+        
+        tile = img.crop((0, top, width, bottom))
+        
+        if tile.height < tile_size:
+            padded = Image.new('RGB', (tile_size, tile_size), (255, 255, 255))
+            padded.paste(tile, (0, tile_size - tile.height))
+            tile = padded
+        
+        tile_path = os.path.join(output_dir, f"{base_name}_tile_{i + 1}.png")
+        tile.save(tile_path)
+        tile_paths.append(tile_path)
+    
+    if tile_paths:
+        last_top = (num_tiles - 1) * stride
+        if last_top + tile_size < height:
+            top = height - tile_size
+            tile = img.crop((0, top, width, height))
+            tile_path = os.path.join(output_dir, f"{base_name}_tile_{num_tiles + 1}.png")
+            tile.save(tile_path)
+            tile_paths.append(tile_path)
+    
+    return tile_paths
