@@ -7,30 +7,20 @@ import argparse
 from pathlib import Path
 import logging
 
-# Add the epollo package to the path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from epollo.ocr_utils import DeepSeekOCR, extract_text_from_screenshot
+from epollo.ocr_utils import DeepSeekOCR
 from epollo.screenshot import render_url_to_screenshot_sync
 from epollo.config import Config
 
-# Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 
 def demo_ocr_from_file(image_path: str, output_format: str = "plain", auto_crop: bool = False):
-    """Demonstrate OCR on an existing image file.
-    
-    Args:
-        image_path: Path to image file
-        output_format: Output format ('plain', 'markdown', 'html', 'tables')
-        auto_crop: Whether to automatically crop tall images
-    """
     logger.info(f"Extracting text from {image_path} using format: {output_format}, auto_crop: {auto_crop}")
     
     try:
-        # Initialize OCR client with config
         config = Config()
         ocr = DeepSeekOCR(
             api_url=config.ocr_api_url,
@@ -38,12 +28,10 @@ def demo_ocr_from_file(image_path: str, output_format: str = "plain", auto_crop:
             timeout=config.ocr_timeout
         )
         
-        # Check connection
         if not ocr.check_connection():
             logger.error("Cannot connect to Ollama API. Make sure Ollama is running with DeepSeek OCR model.")
             return False
         
-        # Extract text based on format
         if output_format.lower() == "tables":
             result = ocr.extract_tables(image_path, auto_crop=auto_crop)
         else:
@@ -63,18 +51,9 @@ def demo_ocr_from_file(image_path: str, output_format: str = "plain", auto_crop:
 
 
 def demo_ocr_from_url(url: str, output_format: str = "plain", save_screenshot: bool = True, auto_crop: bool = False):
-    """Demonstrate OCR on a screenshot taken from a URL.
-    
-    Args:
-        url: URL to screenshot and process
-        output_format: Output format ('plain', 'markdown', 'html', 'tables')
-        save_screenshot: Whether to save the screenshot
-        auto_crop: Whether to automatically crop tall images
-    """
     logger.info(f"Taking screenshot of {url}")
     
     try:
-        # Take screenshot
         screenshot_path = f"screenshot_{url.replace('https://', '').replace('http://', '').replace('/', '_')}.png" if save_screenshot else None
         screenshot_bytes = render_url_to_screenshot_sync(
             url=url,
@@ -84,7 +63,6 @@ def demo_ocr_from_url(url: str, output_format: str = "plain", save_screenshot: b
             format='png'
         )
         
-        # Extract text from screenshot
         return demo_ocr_from_bytes(screenshot_bytes, output_format, auto_crop)
         
     except Exception as e:
@@ -93,17 +71,9 @@ def demo_ocr_from_url(url: str, output_format: str = "plain", save_screenshot: b
 
 
 def demo_ocr_from_bytes(image_bytes: bytes, output_format: str = "plain", auto_crop: bool = False):
-    """Demonstrate OCR on image bytes.
-    
-    Args:
-        image_bytes: Image as bytes
-        output_format: Output format ('plain', 'markdown', 'html', 'tables')
-        auto_crop: Whether to automatically crop tall images
-    """
     logger.info(f"Extracting text from image bytes using format: {output_format}, auto_crop: {auto_crop}")
     
     try:
-        # Initialize OCR client with config
         config = Config()
         ocr = DeepSeekOCR(
             api_url=config.ocr_api_url,
@@ -111,12 +81,10 @@ def demo_ocr_from_bytes(image_bytes: bytes, output_format: str = "plain", auto_c
             timeout=config.ocr_timeout
         )
         
-        # Check connection
         if not ocr.check_connection():
             logger.error("Cannot connect to Ollama API. Make sure Ollama is running with DeepSeek OCR model.")
             return False
         
-        # Extract text based on format
         if output_format.lower() == "tables":
             result = ocr.extract_tables(image_bytes, auto_crop=auto_crop)
         else:
@@ -136,7 +104,6 @@ def demo_ocr_from_bytes(image_bytes: bytes, output_format: str = "plain", auto_c
 
 
 def main():
-    """Main function to run OCR demo."""
     parser = argparse.ArgumentParser(description="DeepSeek OCR Demo")
     parser.add_argument("input", help="Image file path or URL to process")
     parser.add_argument("--format", choices=["plain", "markdown", "html", "tables"], 
@@ -151,7 +118,6 @@ def main():
     logger.info("Starting DeepSeek OCR demo")
     
     if args.type == "file":
-        # Check if file exists
         if not os.path.exists(args.input):
             logger.error(f"File not found: {args.input}")
             sys.exit(1)
