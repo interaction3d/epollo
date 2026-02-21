@@ -3,7 +3,7 @@ import plistlib
 import os
 from pathlib import Path
 
-SCRIPT_PATH = "/Users/tylerzhu/Documents/GitHub/epollo/run_screenshots.py"
+SCRIPT_PATH = "/Users/{{USER}}/Documents/GitHub/epollo/run_screenshots.py"
 PLIST_PATH = Path.home() / "Library/LaunchAgents/com.epollo.screenshot.plist"
 
 URLS = [
@@ -14,7 +14,7 @@ URLS = [
 plist = {
     "Label": "com.epollo.screenshot",
     "ProgramArguments": [
-        "/Users/tylerzhu/Documents/GitHub/epollo/venv/bin/python",
+        "/Users/{{USER}}/Documents/GitHub/epollo/venv/bin/python",
         SCRIPT_PATH,
     ],
     "StartCalendarInterval": {
