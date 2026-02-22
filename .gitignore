@@ -147,4 +147,8 @@ logs/
 temp/
 tmp/
 
+# Images
+*.png
+*.jpg
+
 
