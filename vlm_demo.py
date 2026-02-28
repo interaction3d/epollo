@@ -28,19 +28,10 @@ def demo_vlm_from_file(image_path: str, prompt: str = PROMPT, model: str = MODEL
         
         vlm = Qwen3VL(model=model)
         result = vlm.query(image_path, prompt)
-        
-        logger.info(f"\n{'='*60}")
-        logger.info(f"VLM RESPONSE ({model})")
-        logger.info(f"Prompt: {prompt}")
-        logger.info(f"{'='*60}")
-        logger.info(result)
-        logger.info(f"{'='*60}")
-        
-        return True
-        
+        return result
     except Exception as e:
         logger.error(f"Error processing image: {e}")
-        return False
+        return ""
 
 
 def main():
