@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SCRIPT_PATH="/Users/tylerzhu/Documents/GitHub/epollo/run_screenshots.sh"
+SCRIPT_PATH="$HOME/Documents/GitHub/epollo/run_screenshots.sh"
 LOG_PATH="/tmp/epollo_cron.log"
 
 CRON_CMD="*/10 * * * * $SCRIPT_PATH >> $LOG_PATH 2>&1"
