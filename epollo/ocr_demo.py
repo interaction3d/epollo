@@ -7,7 +7,7 @@ import argparse
 from pathlib import Path
 import logging
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from epollo.ocr_utils import DeepSeekOCR
 from epollo.screenshot import render_url_to_screenshot_sync
