@@ -109,6 +109,7 @@ def print_multi_period_table(symbols: List[str], periods: List[int] = None):
     header = f"{'Symbol':<8}"
     for p in periods:
         header += f"{p:>10}d"
+    header += "       Trend"
     print(header)
     print("-" * len(header))
     
@@ -116,18 +117,37 @@ def print_multi_period_table(symbols: List[str], periods: List[int] = None):
     GREEN = "\033[92m"
     RED = "\033[91m"
     RESET = "\033[0m"
+    UP = "↑"
+    DOWN = "↓"
     
     # Print each row
     for symbol in symbols:
         row = f"{symbol:<8}"
+        trend_str = ""
         for p in periods:
             val = data[symbol].get(p)
             if val is not None:
                 color = GREEN if val > 0 else RED if val < 0 else ""
+                arrow = UP if val > 0 else DOWN if val < 0 else "→"
                 row += f" {color}{val:>+9.2f}%{RESET}"
+                trend_str += arrow
             else:
                 row += f" {'N/A':>9}"
-        print(row)
+                trend_str += "?"
+        
+        # Build colored trend - pad to 4 chars, then colorize each
+        padded = trend_str.ljust(4)
+        colored = ""
+        for c in padded:
+            if c == "↑":
+                colored += GREEN + c + RESET
+            elif c == "↓":
+                colored += RED + c + RESET
+            else:
+                colored += " "
+        
+        # Print without format - just append (7 spaces to align with "Trend" header)
+        print(row + "       " + colored)
 
 
 def get_stock_info(symbol: str) -> Optional[Dict]:
