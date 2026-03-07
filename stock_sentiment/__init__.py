@@ -7,7 +7,9 @@ from .stocks import (
 )
 
 from .lists import (
-    CANADIAN_ETFS,
+    VANGUARD_CANADA,
+    VANGUARD_US,
+    ISHARES_CANADA,
     US_TECH,
     US_BLUE_CHIP,
     ALL,
@@ -17,7 +19,9 @@ __all__ = [
     "get_price_change",
     "get_price_changes", 
     "get_stock_info",
-    "CANADIAN_ETFS",
+    "VANGUARD_CANADA",
+    "VANGUARD_US",
+    "ISHARES_CANADA",
     "US_TECH",
     "US_BLUE_CHIP",
     "ALL",

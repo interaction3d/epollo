@@ -38,7 +38,8 @@ def get_price_change(symbol: str, days: int = 30) -> Optional[float]:
             return None
         
         current_price = hist['Close'].iloc[-1]
-        past_price = hist['Close'].iloc[0]
+        trading_days = int(days * 5 / 7) + 1
+        past_price = hist['Close'].iloc[-trading_days]
         
         change_pct = ((current_price - past_price) / past_price) * 100
         
@@ -66,6 +67,67 @@ def get_price_changes(symbols: List[str], days: int = 30) -> Dict[str, Optional[
         results[symbol] = get_price_change(symbol, days)
     
     return results
+
+
+def get_multi_period_changes(symbols: List[str], periods: List[int] = None) -> Dict[str, Dict[int, Optional[float]]]:
+    """Get price changes for multiple symbols across multiple periods.
+    
+    Args:
+        symbols: List of stock ticker symbols
+        periods: List of day periods (default: [7, 30, 60, 90])
+        
+    Returns:
+        Dict mapping symbol to dict of period -> change percentage
+    """
+    if periods is None:
+        periods = [7, 30, 60, 90]
+    
+    results = {}
+    
+    for symbol in symbols:
+        logger.info(f"Fetching {symbol}...")
+        results[symbol] = {}
+        for days in periods:
+            results[symbol][days] = get_price_change(symbol, days)
+    
+    return results
+
+
+def print_multi_period_table(symbols: List[str], periods: List[int] = None):
+    """Print a formatted table of price changes across multiple periods.
+    
+    Args:
+        symbols: List of stock ticker symbols
+        periods: List of day periods to show
+    """
+    if periods is None:
+        periods = [7, 30, 60, 90]
+    
+    data = get_multi_period_changes(symbols, periods)
+    
+    # Print header
+    header = f"{'Symbol':<8}"
+    for p in periods:
+        header += f"{p:>10}d"
+    print(header)
+    print("-" * len(header))
+    
+    # Colors
+    GREEN = "\033[92m"
+    RED = "\033[91m"
+    RESET = "\033[0m"
+    
+    # Print each row
+    for symbol in symbols:
+        row = f"{symbol:<8}"
+        for p in periods:
+            val = data[symbol].get(p)
+            if val is not None:
+                color = GREEN if val > 0 else RED if val < 0 else ""
+                row += f" {color}{val:>+9.2f}%{RESET}"
+            else:
+                row += f" {'N/A':>9}"
+        print(row)
 
 
 def get_stock_info(symbol: str) -> Optional[Dict]:
@@ -99,21 +161,19 @@ def get_stock_info(symbol: str) -> Optional[Dict]:
 
 if __name__ == "__main__":
     import sys
+    import argparse
     
-    symbols = sys.argv[1:] if len(sys.argv) > 1 else ["VFV", "VUS", "AAPL"]
-    days = 30
+    parser = argparse.ArgumentParser(description="Stock price change fetcher")
+    parser.add_argument("symbols", nargs="*", help="Stock symbols (default: VFV VUS AAPL)")
+    parser.add_argument("-p", "--periods", nargs="+", type=int, default=[7, 30, 60, 90],
+                        help="Periods in days (default: 7 30 60 90)")
     
-    print(f"Getting {days}-day price changes for: {symbols}\n")
+    args = parser.parse_args()
     
-    changes = get_price_changes(symbols, days)
+    symbols = args.symbols if args.symbols else ["VFV", "VUS", "AAPL"]
     
-    print("=" * 40)
-    for symbol, change in changes.items():
-        if change is not None:
-            arrow = "↑" if change > 0 else "↓" if change < 0 else "→"
-            color = "\033[92m" if change > 0 else "\033[91m" if change < 0 else "\033[0m"
-            reset = "\033[0m"
-            print(f"{symbol}: {arrow} {color}{change:+.2f}%{reset}")
-        else:
-            print(f"{symbol}: Error fetching data")
-    print("=" * 40)
+    print(f"Getting price changes for: {symbols}")
+    print(f"Periods: {args.periods} days")
+    print()
+    
+    print_multi_period_table(symbols, args.periods)
