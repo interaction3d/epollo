@@ -14,3 +14,23 @@ display:
   remove_images: true
   summary_view: true
 
+pipeline:
+  screenshot:
+    enabled: true
+    width: 768
+    height: 2048
+    full_page: true
+    output_dir: "data/screenshots"
+  
+  tile:
+    enabled: true
+    overlap: 0.3
+    output_dir: "data/tiles"
+  
+  vlm:
+    enabled: true
+    prompt: "Please read this image and extract news content"
+    # model: will use ollama.model if not specified
+  
+  summarize:
+    enabled: true
