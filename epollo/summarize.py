@@ -1,66 +1,25 @@
 #!/usr/bin/env python3
-"""Summarize messy markdown into a clean news list using Ollama."""
+"""Summarize messy markdown into a clean news list using OpenAI."""
 
 import sys
 import argparse
 from pathlib import Path
 
+from epollo.config import Config
+from epollo.openai_client import OpenAIService
+
 
 def summarize(markdown: str) -> str:
-    """Clean messy markdown into a news list using Ollama.
-    
-    Args:
-        markdown: Messy markdown content to clean
-        
-    Returns:
-        Cleaned news list as string
-    """
-    from epollo.config import Config
-    import ollama
-    
     config = Config()
-    
-    prompt = f"""Extract ONLY real news articles from the text below. 
-
-REMOVE these completely:
-- Advertisements, ads, sponsored content
-- Promotional content, "Buy now" messages
-- Newsletter signup prompts
-- Social media links and follow buttons
-- Footer links, sidebar content
-
-Format as a clean numbered list:
-1. Title: [headline]
-2. Summary: [1-2 sentence summary]
-3. Source: [source name and date if available]
-
-Skip anything that is not a real news article.
+    service = OpenAIService(model=config.openai_model)
+    prompt = f"""Extract only real news items from this text.
+Remove ads, promotional content, signup prompts, and social links.
+Return numbered list with Title, Summary (1-2 sentences), and Source.
 
 Text:
 {markdown}
-
-Output:"""
-
-    try:
-        response = ollama.generate(
-            model=config.ollama_model,
-            prompt=prompt,
-            options={"temperature": 0.3, "top_p": 0.9}
-        )
-        
-        if response and 'response' in response:
-            result = response['response'].strip()
-            
-            filtered_lines = [
-                line for line in result.split('\n')
-                if not any(word in line.lower() for word in ['advertisement', 'ad:', 'sponsored', 'promotion', 'buy now', 'subscribe', 'newsletter', 'follow us', 'social'])
-            ]
-            
-            result = '\n'.join(filtered_lines)
-            return result if result.strip() else "No news content found."
-        return "Error: Empty response from Ollama"
-    except Exception as e:
-        return f"Error: {str(e)}"
+"""
+    return service.generate_text(prompt, temperature=0.2)
 
 
 def main():
@@ -68,18 +27,13 @@ def main():
     parser.add_argument("input", nargs="?", help="Input markdown file (default: stdin)")
     parser.add_argument("-o", "--output", help="Output file (default: stdout)")
     args = parser.parse_args()
-    
-    if args.input:
-        markdown = Path(args.input).read_text(encoding="utf-8")
-    else:
-        markdown = sys.stdin.read()
-    
+
+    markdown = Path(args.input).read_text(encoding="utf-8") if args.input else sys.stdin.read()
     if not markdown.strip():
         print("Error: No input provided", file=sys.stderr)
         sys.exit(1)
-    
+
     result = summarize(markdown)
-    
     if args.output:
         Path(args.output).write_text(result, encoding="utf-8")
         print(f"Saved to: {args.output}")
