@@ -9,7 +9,6 @@ import logging
 import re
 from html.parser import HTMLParser
 from html import unescape
-import ollama
 from .config import Config
 from .content_filter import ContentFilter
 from .screenshot import render_html_to_screenshot_sync, render_url_to_screenshot_sync
@@ -76,15 +75,8 @@ class Browser:
         # Initialize content filter only if filtering is enabled and topics are configured
         if self.filtering_enabled and self.config.topics:
             self.content_filter = ContentFilter(
-                model=self.config.ollama_model,
-                api_url=self.config.ollama_api_url
+                model=self.config.openai_model
             )
-            # Check Ollama availability
-            if not self.content_filter.check_ollama_available():
-                logger.warning(
-                    f"Ollama is not available at {self.config.ollama_api_url}. "
-                    "Content filtering will not work. Make sure Ollama is running."
-                )
         else:
             self.content_filter = None
     

@@ -1,117 +1,58 @@
 """Configuration management for Epollo browser."""
 
-import os
-import yaml
-from typing import List, Dict, Any
 from pathlib import Path
+from typing import Any, Dict, List
+
+import yaml
 
 
 class Config:
-    """Manages application configuration from YAML file."""
-    
     DEFAULT_CONFIG = {
-        "topics": [
-            "advertising",
-            "sponsored content",
-            "newsletter signup"
-        ],
-        "ollama": {
-            "model": "qwen2.5:1.5b",
-            "api_url": "http://localhost:11434"
-        },
-        "filtering": {
-            "enabled": True
-        },
-        "display": {
-            "remove_images": False,
-            "summary_view": False
-        }
+        "topics": ["advertising", "sponsored content", "newsletter signup"],
+        "openai": {"model": "gpt-4.1-mini"},
+        "filtering": {"enabled": True},
+        "display": {"remove_images": False, "summary_view": False},
     }
-    
+
     def __init__(self, config_path: str = "config.yaml"):
-        """Initialize configuration from file or use defaults.
-        
-        Args:
-            config_path: Path to configuration YAML file
-        """
         self.config_path = Path(config_path)
         self._config = self._load_config()
-    
+
     def _load_config(self) -> Dict[str, Any]:
-        """Load configuration from file or return defaults."""
+        merged = {
+            "topics": list(self.DEFAULT_CONFIG["topics"]),
+            "openai": dict(self.DEFAULT_CONFIG["openai"]),
+            "filtering": dict(self.DEFAULT_CONFIG["filtering"]),
+            "display": dict(self.DEFAULT_CONFIG["display"]),
+        }
         if self.config_path.exists():
-            try:
-                with open(self.config_path, 'r', encoding='utf-8') as f:
-                    config = yaml.safe_load(f)
-                    # Merge with defaults to ensure all keys exist
-                    merged = self.DEFAULT_CONFIG.copy()
-                    if config:
-                        merged.update(config)
-                        # Deep merge for nested dicts
-                        if "ollama" in config:
-                            merged["ollama"].update(config["ollama"])
-                        if "filtering" in config:
-                            merged["filtering"].update(config["filtering"])
-                        if "display" in config:
-                            merged["display"].update(config["display"])
-                    return merged
-            except (yaml.YAMLError, IOError) as e:
-                print(f"Warning: Failed to load config file: {e}. Using defaults.")
-                return self.DEFAULT_CONFIG.copy()
-        else:
-            return self.DEFAULT_CONFIG.copy()
-    
+            with open(self.config_path, "r", encoding="utf-8") as f:
+                config = yaml.safe_load(f) or {}
+            merged.update({k: v for k, v in config.items() if k not in {"openai", "filtering", "display"}})
+            for key in ("openai", "filtering", "display"):
+                if key in config and isinstance(config[key], dict):
+                    merged[key].update(config[key])
+        return merged
+
     @property
     def topics(self) -> List[str]:
-        """Get list of topics to filter."""
         return self._config.get("topics", [])
-    
+
     @property
-    def ollama_model(self) -> str:
-        """Get Ollama model name."""
-        return self._config.get("ollama", {}).get("model", "llama3.2")
-    
-    @property
-    def ollama_api_url(self) -> str:
-        """Get Ollama API URL."""
-        return self._config.get("ollama", {}).get("api_url", "http://localhost:11434")
-    
+    def openai_model(self) -> str:
+        return self._config.get("openai", {}).get("model", "gpt-4.1-mini")
+
     @property
     def filtering_enabled(self) -> bool:
-        """Check if filtering is enabled by default."""
         return self._config.get("filtering", {}).get("enabled", True)
-    
+
     @property
     def remove_images(self) -> bool:
-        """Check if images should be removed from rendered pages."""
         return self._config.get("display", {}).get("remove_images", False)
-    
+
     @property
     def summary_view(self) -> bool:
-        """Check if summary view should be used instead of full page."""
         return self._config.get("display", {}).get("summary_view", False)
-    
-    @property
-    def ocr_enabled(self) -> bool:
-        """Check if OCR is enabled."""
-        return self._config.get("ocr", {}).get("enabled", False)
-    
-    @property
-    def ocr_api_url(self) -> str:
-        """Get OCR API URL."""
-        return self._config.get("ocr", {}).get("api_url", "http://localhost:11434")
-    
-    @property
-    def ocr_model(self) -> str:
-        """Get OCR model name."""
-        return self._config.get("ocr", {}).get("model", "deepseek-ocr")
-    
-    @property
-    def ocr_timeout(self) -> int:
-        """Get OCR timeout in seconds."""
-        return self._config.get("ocr", {}).get("timeout", 60)
-    
-    def reload(self):
-        """Reload configuration from file."""
-        self._config = self._load_config()
 
+    def reload(self):
+        self._config = self._load_config()

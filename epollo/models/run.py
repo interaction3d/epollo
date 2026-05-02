@@ -1,9 +1,8 @@
-from ollama import chat
+from openai import OpenAI
 
-response = chat(model='qwen2.5:1.5b', messages=[
-    {
-        'role': 'user',
-        'content': 'Why is the sky blue?',
-    },
-])
-print(response.message.content)
+client = OpenAI()
+response = client.responses.create(
+    model='gpt-4.1-mini',
+    input='Why is the sky blue?'
+)
+print(response.output_text)
